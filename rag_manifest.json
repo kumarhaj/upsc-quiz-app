@@ -1,0 +1,44 @@
+{
+  "sources": [
+    {
+      "id": "ncert_indian_constitution_at_work",
+      "type": "ncert_listing",
+      "url": "https://ncert.nic.in/textbook.php?keps2=0-9",
+      "book_code": "keps2",
+      "chapter_count": 10,
+      "title": "NCERT Indian Constitution at Work",
+      "subject_tags": ["Polity"],
+      "allowed_basis": "NCERT official textbook listing and chapter PDFs"
+    },
+    {
+      "id": "ncert_indian_economic_development",
+      "type": "ncert_listing",
+      "url": "https://ncert.nic.in/textbook.php?keec1=0-10",
+      "book_code": "keec1",
+      "chapter_count": 8,
+      "title": "NCERT Indian Economic Development",
+      "subject_tags": ["Economy"],
+      "allowed_basis": "NCERT official textbook listing and chapter PDFs"
+    },
+    {
+      "id": "ncert_india_physical_environment",
+      "type": "ncert_listing",
+      "url": "https://ncert.nic.in/textbook.php?kegy1=0-7",
+      "book_code": "kegy1",
+      "chapter_count": 6,
+      "title": "NCERT India Physical Environment",
+      "subject_tags": ["Geography", "Environment"],
+      "allowed_basis": "NCERT official textbook listing and chapter PDFs"
+    },
+    {
+      "id": "ncert_themes_in_indian_history_part2",
+      "type": "ncert_listing",
+      "url": "https://ncert.nic.in/textbook.php?lehs2=0-5",
+      "book_code": "lehs2",
+      "chapter_count": 4,
+      "title": "NCERT Themes in Indian History Part II",
+      "subject_tags": ["History"],
+      "allowed_basis": "NCERT official textbook listing and chapter PDFs"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Local virtual environments
+.venv/
+venv/
+env/
+
+# Local RAG/download artifacts
+rag_store/
+rag_store_current/
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

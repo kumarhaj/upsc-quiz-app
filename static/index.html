@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UPSC GS Quiz Generator</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">UPSC General Studies</p>
+        <h1>Fresh 50-question quiz on every run</h1>
+        <p class="subhead">
+          Generates UPSC-style MCQs across history, polity, economy, geography, environment,
+          science and current affairs. It uses local Ollama <code>llama3.1</code> when available
+          and falls back to a rotating in-app question bank if needed.
+        </p>
+        <div class="controls">
+          <button id="generateBtn" class="primary">Generate New Quiz</button>
+          <button id="fallbackBtn" class="secondary">Use Fallback Only</button>
+        </div>
+        <div class="meta">
+          <span id="statusPill" class="pill">Idle</span>
+          <span id="sourceText">Source: not generated yet</span>
+        </div>
+      </section>
+
+      <section class="card" id="introCard">
+        <h2>How this works</h2>
+        <p>
+          Each generation creates a new 50-question set. Submit once to see your score,
+          correct answers, explanations and question references.
+        </p>
+      </section>
+
+      <form id="quizForm" class="quiz hidden"></form>
+
+      <section class="actions hidden" id="actionBar">
+        <button id="submitBtn" type="button" class="primary">Submit Quiz</button>
+        <button id="regenerateBtn" type="button" class="secondary">Generate Another Set</button>
+      </section>
+
+      <section id="resultCard" class="card hidden"></section>
+    </main>
+
+    <template id="questionTemplate">
+      <article class="question-card">
+        <div class="question-top">
+          <span class="question-number"></span>
+          <span class="question-subject"></span>
+        </div>
+        <h3 class="question-text"></h3>
+        <div class="options"></div>
+        <div class="review hidden">
+          <p class="review-answer"></p>
+          <p class="review-explanation"></p>
+          <p class="review-reference"></p>
+        </div>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

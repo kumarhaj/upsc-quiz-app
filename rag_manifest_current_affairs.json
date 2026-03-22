@@ -1,0 +1,69 @@
+{
+  "sources": [
+    {
+      "id": "g20_new_delhi_leaders_declaration",
+      "type": "html",
+      "url": "https://g20.org/resources/documents-2/",
+      "title": "G20 Documents Portal",
+      "subject_tags": ["Current Affairs", "Polity", "Economy", "International Relations"],
+      "allowed_basis": "Official G20 documents portal"
+    },
+    {
+      "id": "isro_chandrayaan3",
+      "type": "html",
+      "url": "https://www.isro.gov.in/ISRO_EN/Chandrayaan3_Details.html",
+      "title": "ISRO Chandrayaan-3 Details",
+      "subject_tags": ["Current Affairs", "Science"],
+      "allowed_basis": "Official ISRO mission page"
+    },
+    {
+      "id": "isro_aditya_l1",
+      "type": "html",
+      "url": "https://www.isro.gov.in/Aditya_L1_Mission_Completion_of_First_Halo_Orbit.html",
+      "title": "ISRO Aditya-L1 Mission Update",
+      "subject_tags": ["Current Affairs", "Science"],
+      "allowed_basis": "Official ISRO mission update page"
+    },
+    {
+      "id": "pib_dpdp_rules_explainer",
+      "type": "html",
+      "url": "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2190655",
+      "title": "PIB DPDP Act and Rules Explainer",
+      "subject_tags": ["Current Affairs", "Polity", "Governance"],
+      "allowed_basis": "Official PIB press release page"
+    },
+    {
+      "id": "pib_indiaai_mission",
+      "type": "html",
+      "url": "https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=154635&lang=1&reg=37",
+      "title": "PIB IndiaAI Mission Press Note",
+      "subject_tags": ["Current Affairs", "Science", "Economy"],
+      "allowed_basis": "Official PIB press note page"
+    },
+    {
+      "id": "pib_green_hydrogen_mission",
+      "type": "html",
+      "url": "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2129952",
+      "title": "PIB Green Hydrogen Mission Material",
+      "subject_tags": ["Current Affairs", "Economy", "Environment"],
+      "allowed_basis": "Official PIB press release page"
+    },
+    {
+      "id": "new_india_samachar_criminal_laws",
+      "type": "pdf",
+      "url": "https://newindiasamachar.pib.gov.in/WriteReadData/Magazine/2024/Jul/M202407011.pdf",
+      "filename": "new_india_samachar_criminal_laws.pdf",
+      "title": "New India Samachar July 2024 Criminal Laws Coverage",
+      "subject_tags": ["Current Affairs", "Polity", "Governance"],
+      "allowed_basis": "Official PIB/New India Samachar magazine PDF"
+    },
+    {
+      "id": "current_affairs_topic_map",
+      "type": "local_markdown",
+      "path": "upsc_research_notes.md",
+      "title": "UPSC Research Notes Topic Map",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "Workspace-authored notes based on official/public sources"
+    }
+  ]
+}

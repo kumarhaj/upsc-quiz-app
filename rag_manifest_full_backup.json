@@ -1,0 +1,92 @@
+{
+  "sources": [
+    {
+      "id": "local_notes",
+      "type": "local_markdown",
+      "path": "upsc_research_notes.md",
+      "title": "UPSC Research Notes",
+      "subject_tags": ["History", "Polity", "Economy", "Geography", "Environment", "Science", "Current Affairs"],
+      "allowed_basis": "User/workspace-authored notes"
+    },
+    {
+      "id": "upsc_policy",
+      "type": "html",
+      "url": "https://upsc.gov.in/website-policy",
+      "title": "UPSC Website Policy",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "UPSC copyright policy allows reproduction with acknowledgement except third-party material"
+    },
+    {
+      "id": "upsc_previous_papers",
+      "type": "html",
+      "url": "https://upsc.gov.in/examinations/previous-question-papers",
+      "title": "UPSC Previous Question Papers",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "UPSC official website content under site policy, excluding third-party material"
+    },
+    {
+      "id": "upsc_archives",
+      "type": "html",
+      "url": "https://upsc.gov.in/examinations/previous-question-papers/archives",
+      "title": "UPSC Previous Question Paper Archives",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "UPSC official website content under site policy, excluding third-party material"
+    },
+    {
+      "id": "upsc_prelims_2025",
+      "type": "html",
+      "url": "https://upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202025",
+      "title": "UPSC Civil Services Preliminary Examination 2025",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "UPSC official website content under site policy, excluding third-party material"
+    },
+    {
+      "id": "pib_copyright",
+      "type": "html",
+      "url": "https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx",
+      "title": "PIB Copyright Policy",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "PIB copyright policy says website material may be reproduced free of charge with acknowledgement except third-party material"
+    },
+    {
+      "id": "pib_indiaai",
+      "type": "html",
+      "url": "https://www.pib.gov.in/PressNoteDetails.aspx?%3BModuleId=3&%3Blang=1&%3Breg=3&NoteId=152130",
+      "title": "PIB IndiaAI Mission Note",
+      "subject_tags": ["Science", "Current Affairs"],
+      "allowed_basis": "PIB website content under copyright policy, excluding third-party material"
+    },
+    {
+      "id": "pib_green_hydrogen",
+      "type": "html",
+      "url": "https://www.pib.gov.in/PressReleseDetail.aspx?PRID=2039091",
+      "title": "PIB Green Hydrogen Mission",
+      "subject_tags": ["Economy", "Environment", "Current Affairs"],
+      "allowed_basis": "PIB website content under copyright policy, excluding third-party material"
+    },
+    {
+      "id": "isro_policy",
+      "type": "html",
+      "url": "https://www.isro.gov.in/Website_Policy.html",
+      "title": "ISRO Website Policy",
+      "subject_tags": ["Current Affairs"],
+      "allowed_basis": "ISRO website policy allows reproduction free of charge with acknowledgement except third-party material"
+    },
+    {
+      "id": "isro_chandrayaan3",
+      "type": "html",
+      "url": "https://www.isro.gov.in/ISRO_EN/Chandrayaan3.html",
+      "title": "ISRO Chandrayaan-3",
+      "subject_tags": ["Science", "Current Affairs"],
+      "allowed_basis": "ISRO website content under website policy, excluding third-party material"
+    },
+    {
+      "id": "isro_aditya_l1",
+      "type": "html",
+      "url": "https://www.isro.gov.in/Aditya_L1_Mission_Completion_of_First_Halo_Orbit.html",
+      "title": "ISRO Aditya-L1",
+      "subject_tags": ["Science", "Current Affairs"],
+      "allowed_basis": "ISRO website content under website policy, excluding third-party material"
+    }
+  ]
+}
