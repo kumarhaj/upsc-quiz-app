@@ -6,7 +6,7 @@ import random
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -394,7 +394,11 @@ def generate_quiz_payload(force_fallback: bool = False) -> dict[str, Any]:
     }
 
 
-def generate_quiz_batch_payload(count: int, force_fallback: bool = False) -> dict[str, Any]:
+def generate_quiz_batch_payload(
+    count: int,
+    force_fallback: bool = False,
+    progress_callback: Callable[[list[dict[str, Any]]], None] | None = None,
+) -> dict[str, Any]:
     if force_fallback:
         raise ValueError("Fallback mode is disabled. Ollama generation is required.")
 
@@ -413,6 +417,8 @@ def generate_quiz_batch_payload(count: int, force_fallback: bool = False) -> dic
         if _is_similar_question(question, accepted):
             continue
         accepted.append(question)
+        if progress_callback:
+            progress_callback(list(accepted))
 
     if len(accepted) != count:
         raise RuntimeError(

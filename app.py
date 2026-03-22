@@ -449,8 +449,15 @@ class QuizHandler(BaseHTTPRequestHandler):
 
 
 def _generate_quiz_batch(job_id: str) -> None:
+    def on_progress(questions: list[dict]) -> None:
+        with JOBS_LOCK:
+            job = JOBS.get(job_id)
+            if not job or job.get("status") == "error":
+                return
+            job["questions"] = list(questions)
+
     try:
-        payload = generate_quiz_batch_payload(QUIZ_SIZE)
+        payload = generate_quiz_batch_payload(QUIZ_SIZE, progress_callback=on_progress)
     except Exception as exc:  # pragma: no cover
         with JOBS_LOCK:
             job = JOBS.get(job_id)
