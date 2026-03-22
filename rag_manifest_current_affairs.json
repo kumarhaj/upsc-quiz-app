@@ -56,14 +56,6 @@
       "title": "New India Samachar July 2024 Criminal Laws Coverage",
       "subject_tags": ["Current Affairs", "Polity", "Governance"],
       "allowed_basis": "Official PIB/New India Samachar magazine PDF"
-    },
-    {
-      "id": "current_affairs_topic_map",
-      "type": "local_markdown",
-      "path": "upsc_research_notes.md",
-      "title": "UPSC Research Notes Topic Map",
-      "subject_tags": ["Current Affairs"],
-      "allowed_basis": "Workspace-authored notes based on official/public sources"
     }
   ]
 }

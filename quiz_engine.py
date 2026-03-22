@@ -21,7 +21,6 @@ OLLAMA_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180"))
 QUESTION_RETRY_LIMIT = 2
 SUBJECTS = ["History", "Polity", "Economy", "Geography", "Environment", "Science", "Current Affairs"]
 BASE_DIR = Path(__file__).resolve().parent
-NOTES_PATH = BASE_DIR / "upsc_research_notes.md"
 RAG_INDEX_PATH = BASE_DIR / "rag_store" / "index.json"
 RAG_VECTOR_INDEX_PATH = BASE_DIR / "rag_store" / "vector_index.json"
 CURRENT_RAG_INDEX_PATH = BASE_DIR / "rag_store_current" / "index.json"
@@ -43,12 +42,6 @@ def _extract_json_block(text: str) -> str:
     if start == -1 or end == -1 or end <= start:
         raise ValueError("Model response did not contain JSON.")
     return text[start : end + 1]
-
-
-@lru_cache(maxsize=1)
-def _load_research_notes() -> str:
-    return NOTES_PATH.read_text(encoding="utf-8")
-
 
 def _rag_paths(corpus: str) -> tuple[Path, Path]:
     if corpus == "current_affairs":
@@ -78,37 +71,6 @@ def _load_rag_index(corpus: str = "static") -> dict[str, Any] | None:
     if index.get("kind") != "vector":
         return None
     return index
-
-
-def _extract_markdown_section(notes: str, heading: str, level: int = 2) -> str:
-    prefix = "#" * level
-    pattern = rf"(?ms)^{re.escape(prefix)} {re.escape(heading)}\n(.*?)(?=^#{{1,{level}}} |\Z)"
-    match = re.search(pattern, notes)
-    return match.group(1).strip() if match else ""
-
-
-def _extract_subject_context(subject: str) -> str:
-    notes = _load_research_notes()
-    current_affairs = _extract_markdown_section(notes, "Last 10 years current-affairs topic map")
-    quiz_design = _extract_markdown_section(notes, "How the quiz was designed")
-
-    relevant_lines: list[str] = []
-    keywords = SUBJECT_KEYWORDS[subject]
-    for line in current_affairs.splitlines():
-        lowered = line.lower()
-        if any(keyword in lowered for keyword in keywords):
-            relevant_lines.append(line.strip())
-
-    relevant_current = "\n".join(relevant_lines[:12]).strip()
-    parts = [
-        "Relevant current-affairs/topic excerpt:",
-        relevant_current or "Use a static-concept-led question if no strong current-affairs match appears.",
-        "UPSC pattern excerpt:",
-        quiz_design,
-        "Keep the question factual, conservative, and suitable for UPSC Prelims General Studies.",
-    ]
-    return "\n".join(part for part in parts if part).strip()
-
 
 def _embed_query(text: str) -> list[float]:
     index = _load_rag_index("current_affairs") or _load_rag_index("static")
@@ -317,7 +279,7 @@ def _validate_question(item: dict[str, Any]) -> dict[str, Any]:
 
 def _call_ollama_raw_question(subject: str) -> str:
     rag_context, primary_source, primary_text = _extract_rag_context(subject)
-    subject_context = rag_context or _extract_subject_context(subject)
+    subject_context = rag_context or f"Use concise, factual UPSC-style grounding for {subject}."
     prompt = f"""
 Create exactly one UPSC-style multiple choice question for UPSC General Studies.
 

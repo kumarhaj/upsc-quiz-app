@@ -1,22 +1,30 @@
 from __future__ import annotations
 
 import json
+import random
+import re
 import threading
 import time
 import uuid
+from collections import Counter
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from quiz_engine import generate_quiz_batch_payload, generate_quiz_payload
+from quiz_engine import generate_quiz_payload
 
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
-QUIZ_SIZE = 10
+QUIZ_SIZE = 5
+CACHE_TARGET = 12
+CACHE_FILE = BASE_DIR / "generated_questions_cache.json"
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
+QUESTION_CACHE: list[dict] = []
+CACHE_LOCK = threading.Lock()
+CACHE_WORKER_STARTED = False
 INDEX_HTML = """<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -29,31 +37,30 @@ INDEX_HTML = """<!DOCTYPE html>
     <main class="shell">
       <section class="hero">
         <p class="eyebrow">UPSC General Studies</p>
-        <h1>Fresh 10-question quiz session</h1>
+        <h1>Fresh 5-question quiz session</h1>
         <p class="subhead">
-          The app first generates all 10 UPSC-style questions in the background. Once the full
-          set is ready, the quiz starts and you can move through the session without waiting
-          between questions.
+          Questions are pre-generated in the background and saved into a local cache. When 5 are
+          ready, the quiz starts as a full session with no extra wait between questions.
         </p>
         <div class="controls">
-          <button id="generateBtn" class="primary">Generate 10-Question Quiz</button>
+          <button id="generateBtn" class="primary">Start 5-Question Quiz</button>
           <button id="nextBtn" class="secondary" disabled>Next Question</button>
           <button id="revealBtn" class="secondary" disabled>Reveal Answer</button>
         </div>
         <div class="meta">
           <span id="statusPill" class="pill">Idle</span>
-          <span id="sourceText">Source: not generated yet</span>
-          <span id="scoreLine">Answered: 0 / 10 | Correct: 0</span>
-          <span id="queueText">Generation: waiting to start</span>
+          <span id="sourceText">Source: cache warming not started yet</span>
+          <span id="scoreLine">Answered: 0 / 5 | Correct: 0</span>
+          <span id="queueText">Cache: 0 ready</span>
         </div>
       </section>
 
       <section class="card" id="introCard">
         <h2>How this works</h2>
         <p>
-          Click once to generate a full 10-question UPSC GS quiz. While the questions are being
-          prepared, the page shows elapsed time and generation progress. The quiz begins only after
-          all 10 questions are ready.
+          Click once to start a 5-question UPSC GS quiz. If the local cache already has enough
+          questions, the quiz starts quickly. If not, the page shows cache progress and a timer
+          while background generation continues.
         </p>
       </section>
 
@@ -79,7 +86,7 @@ INDEX_HTML = """<!DOCTYPE html>
 </html>
 """
 
-APP_JS = """const QUIZ_SIZE = 10;
+APP_JS = """const QUIZ_SIZE = 5;
 const generateBtn = document.getElementById("generateBtn");
 const nextBtn = document.getElementById("nextBtn");
 const revealBtn = document.getElementById("revealBtn");
@@ -105,7 +112,6 @@ let currentIndex = 0;
 let answered = 0;
 let correct = 0;
 let revealed = false;
-let selectedJobId = null;
 
 function setStatus(text, tone = "neutral") {
   statusPill.textContent = text;
@@ -125,7 +131,6 @@ function resetSession() {
   answered = 0;
   correct = 0;
   revealed = false;
-  selectedJobId = null;
   questionCard.classList.add("hidden");
   resultCard.classList.add("hidden");
   reviewWrap.classList.add("hidden");
@@ -137,8 +142,24 @@ function updateScore() {
   scoreLine.textContent = `Answered: ${answered} / ${QUIZ_SIZE} | Correct: ${correct}`;
 }
 
-function updateProgress(completed, total, elapsedSeconds) {
-  queueText.textContent = `Generation: ${completed} / ${total} ready | Elapsed ${formatElapsed(elapsedSeconds)}`;
+function updateCacheProgress(cacheReady, elapsedSeconds) {
+  queueText.textContent = `Cache: ${cacheReady} ready | Elapsed ${formatElapsed(elapsedSeconds)}`;
+}
+
+async function refreshCacheStatus() {
+  try {
+    const response = await fetch("/api/health");
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      return;
+    }
+    if (!currentQuestion && !quizQuestions.length) {
+      queueText.textContent = `Cache: ${data.cache_ready ?? 0} ready`;
+      sourceText.textContent = `Source: background cache warming (${data.cache_ready ?? 0} ready)`;
+    }
+  } catch (_error) {
+    // Ignore background status refresh failures.
+  }
 }
 
 function renderQuestion(index) {
@@ -185,7 +206,7 @@ function showFinalResult() {
   resultCard.innerHTML = `
     <h2>Quiz Complete</h2>
     <p class="score-line">${correct} / ${answered} correct</p>
-    <p>Generate another 10-question quiz whenever you're ready.</p>
+    <p>Start another session whenever you're ready.</p>
   `;
   resultCard.classList.remove("hidden");
 }
@@ -248,10 +269,10 @@ function moveNext() {
   renderQuestion(currentIndex + 1);
 }
 
-async function generateQuiz() {
+async function startQuiz() {
   resetSession();
-  setStatus("Generating...", "loading");
-  sourceText.textContent = "Source: building full 10-question session";
+  setStatus("Preparing...", "loading");
+  sourceText.textContent = "Source: checking local cache";
   generateBtn.disabled = true;
   nextBtn.disabled = true;
   revealBtn.disabled = true;
@@ -267,8 +288,7 @@ async function generateQuiz() {
       throw new Error(startData.error || "Generation failed");
     }
 
-    selectedJobId = startData.job_id;
-    updateProgress(startData.completed ?? 0, startData.total ?? QUIZ_SIZE, startData.elapsed_seconds ?? 0);
+    updateCacheProgress(startData.cache_ready ?? 0, startData.elapsed_seconds ?? 0);
     const data = await pollJob(startData.job_id);
     quizQuestions = data.questions || [];
     if (quizQuestions.length !== QUIZ_SIZE) {
@@ -277,11 +297,11 @@ async function generateQuiz() {
     renderQuestion(0);
     setStatus("Ready", "success");
     sourceText.textContent = `Source: ${data.source} (${data.model})`;
-    queueText.textContent = `Generation: complete in ${formatElapsed(data.elapsed_seconds ?? 0)}`;
+    queueText.textContent = `Cache: ${data.cache_ready ?? 0} ready | Session ready in ${formatElapsed(data.elapsed_seconds ?? 0)}`;
   } catch (error) {
     setStatus("Failed", "error");
     sourceText.textContent = `Source: error - ${error.message}`;
-    queueText.textContent = "Generation: failed";
+    queueText.textContent = "Cache: failed to prepare session";
   } finally {
     generateBtn.disabled = false;
     revealBtn.disabled = !currentQuestion || revealed;
@@ -289,17 +309,19 @@ async function generateQuiz() {
   }
 }
 
-generateBtn.addEventListener("click", generateQuiz);
+generateBtn.addEventListener("click", startQuiz);
 nextBtn.addEventListener("click", moveNext);
 revealBtn.addEventListener("click", revealAnswer);
 updateScore();
+refreshCacheStatus();
+setInterval(refreshCacheStatus, 5000);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function pollJob(jobId) {
-  for (let attempt = 0; attempt < 600; attempt += 1) {
+  for (let attempt = 0; attempt < 1800; attempt += 1) {
     const response = await fetch(`/api/generate-status?id=${encodeURIComponent(jobId)}`);
     const data = await response.json();
     if (!response.ok || !data.ok) {
@@ -311,13 +333,173 @@ async function pollJob(jobId) {
     if (data.status === "error") {
       throw new Error(data.error || "Generation failed");
     }
-    updateProgress(data.completed ?? 0, data.total ?? QUIZ_SIZE, data.elapsed_seconds ?? 0);
-    sourceText.textContent = `Source: generating question set (${data.completed ?? 0}/${data.total ?? QUIZ_SIZE})`;
+    updateCacheProgress(data.cache_ready ?? 0, data.elapsed_seconds ?? 0);
+    sourceText.textContent = `Source: warming cache (${data.cache_ready ?? 0} ready / need ${data.required ?? QUIZ_SIZE})`;
     await sleep(1000);
   }
-  throw new Error("Generation timed out while waiting for the 10-question quiz.");
+  throw new Error("Generation timed out while waiting for enough cached questions.");
 }
 """
+
+
+def _normalize_for_similarity(text: str) -> str:
+    lowered = text.lower()
+    lowered = re.sub(r"[^a-z0-9\s]", " ", lowered)
+    lowered = re.sub(r"\s+", " ", lowered).strip()
+    return lowered
+
+
+def _is_similar_question(candidate: dict, existing: list[dict]) -> bool:
+    candidate_stem = _normalize_for_similarity(candidate["question"])
+    candidate_reference = _normalize_for_similarity(candidate.get("reference", ""))
+    candidate_tokens = set(candidate_stem.split())
+    for item in existing:
+        existing_stem = _normalize_for_similarity(item["question"])
+        existing_reference = _normalize_for_similarity(item.get("reference", ""))
+        if candidate_stem == existing_stem:
+            return True
+        if candidate_reference and candidate_reference == existing_reference:
+            return True
+        existing_tokens = set(existing_stem.split())
+        if not candidate_tokens or not existing_tokens:
+            continue
+        overlap = len(candidate_tokens & existing_tokens)
+        union = len(candidate_tokens | existing_tokens)
+        if union and (overlap / union) >= 0.72:
+            return True
+    return False
+
+
+def _save_cache() -> None:
+    CACHE_FILE.write_text(json.dumps(QUESTION_CACHE, ensure_ascii=True, indent=2), encoding="utf-8")
+
+
+def _load_cache() -> None:
+    if not CACHE_FILE.exists():
+        return
+    try:
+        cached = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return
+    if not isinstance(cached, list):
+        return
+    with CACHE_LOCK:
+        QUESTION_CACHE.clear()
+        QUESTION_CACHE.extend(item for item in cached if isinstance(item, dict))
+
+
+def _cache_snapshot() -> list[dict]:
+    with CACHE_LOCK:
+        return list(QUESTION_CACHE)
+
+
+def _subject_plan(count: int) -> list[str]:
+    ordered = ["History", "Polity", "Economy", "Geography", "Environment", "Science", "Current Affairs"]
+    plan = list(ordered[: min(count, len(ordered))])
+    while len(plan) < count:
+        plan.append(random.choice(["Polity", "Economy", "Geography", "Current Affairs", "History"]))
+    random.shuffle(plan)
+    return plan
+
+
+def _assemble_session_from_cache(count: int) -> list[dict] | None:
+    with CACHE_LOCK:
+        if len(QUESTION_CACHE) < count:
+            return None
+        pool = list(QUESTION_CACHE)
+
+    selected: list[dict] = []
+    chosen_indexes: set[int] = set()
+    subject_targets = Counter(_subject_plan(count))
+    subject_counts: Counter[str] = Counter()
+
+    for subject in subject_targets:
+        for idx, question in enumerate(pool):
+            if idx in chosen_indexes or question.get("subject") != subject:
+                continue
+            if _is_similar_question(question, selected):
+                continue
+            selected.append(question)
+            chosen_indexes.add(idx)
+            subject_counts[subject] += 1
+            break
+
+    for idx, question in enumerate(pool):
+        if len(selected) >= count:
+            break
+        if idx in chosen_indexes:
+            continue
+        subject = question.get("subject")
+        if subject_counts[subject] >= 2:
+            continue
+        if _is_similar_question(question, selected):
+            continue
+        selected.append(question)
+        chosen_indexes.add(idx)
+        subject_counts[subject] += 1
+
+    if len(selected) < count:
+        return None
+
+    with CACHE_LOCK:
+        QUESTION_CACHE.clear()
+        _save_cache()
+    return selected
+
+
+def _cache_worker_loop() -> None:
+    global CACHE_WORKER_STARTED
+    while True:
+        with CACHE_LOCK:
+            cache_full = len(QUESTION_CACHE) >= CACHE_TARGET
+        if cache_full:
+            time.sleep(2)
+            continue
+
+        try:
+            payload = generate_quiz_payload()
+            question = payload["question"]
+        except Exception:
+            time.sleep(5)
+            continue
+
+        with CACHE_LOCK:
+            if _is_similar_question(question, QUESTION_CACHE):
+                continue
+            QUESTION_CACHE.append(question)
+            _save_cache()
+
+
+def _ensure_cache_worker() -> None:
+    global CACHE_WORKER_STARTED
+    with JOBS_LOCK:
+        if CACHE_WORKER_STARTED:
+            return
+        CACHE_WORKER_STARTED = True
+    threading.Thread(target=_cache_worker_loop, daemon=True).start()
+
+
+def _try_fulfill_job(job_id: str) -> None:
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("status") != "pending":
+            return
+
+    questions = _assemble_session_from_cache(QUIZ_SIZE)
+    if not questions:
+        return
+
+    with JOBS_LOCK:
+        job = JOBS.get(job_id)
+        if not job or job.get("status") != "pending":
+            return
+        job["status"] = "ready"
+        job["payload"] = {
+            "source": "ollama + vector-rag cache",
+            "model": "llama3.1",
+            "count": len(questions),
+            "questions": questions,
+        }
 
 
 class QuizHandler(BaseHTTPRequestHandler):
@@ -348,6 +530,7 @@ class QuizHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
+        _ensure_cache_worker()
         parsed = urlparse(self.path)
         if parsed.path in {"/", "/index.html"}:
             self._send_text(INDEX_HTML, "text/html; charset=utf-8")
@@ -359,11 +542,12 @@ class QuizHandler(BaseHTTPRequestHandler):
             self._send_file(STATIC_DIR / "styles.css", "text/css; charset=utf-8")
             return
         if parsed.path == "/api/health":
-            self._send_json({"ok": True, "quiz_size": QUIZ_SIZE})
+            self._send_json({"ok": True, "quiz_size": QUIZ_SIZE, "cache_ready": len(_cache_snapshot())})
             return
         if parsed.path == "/api/generate-status":
             params = parse_qs(parsed.query)
             job_id = params.get("id", [""])[0]
+            _try_fulfill_job(job_id)
             with JOBS_LOCK:
                 job = JOBS.get(job_id)
             if not job:
@@ -371,21 +555,19 @@ class QuizHandler(BaseHTTPRequestHandler):
                 return
 
             elapsed = int(time.time() - job["started_at"])
+            cache_ready = len(_cache_snapshot())
             payload = {
                 "ok": True,
                 "status": job["status"],
-                "completed": len(job.get("questions", [])),
-                "total": job.get("total", QUIZ_SIZE),
+                "cache_ready": cache_ready,
+                "required": QUIZ_SIZE,
                 "elapsed_seconds": elapsed,
             }
             if job["status"] == "ready":
-                payload["payload"] = {
-                    "source": job["source"],
-                    "model": job["model"],
-                    "count": len(job["questions"]),
-                    "questions": job["questions"],
-                    "elapsed_seconds": elapsed,
-                }
+                ready_payload = dict(job["payload"])
+                ready_payload["elapsed_seconds"] = elapsed
+                ready_payload["cache_ready"] = cache_ready
+                payload["payload"] = ready_payload
             if job["status"] == "error":
                 payload["error"] = job["error"]
             self._send_json(payload)
@@ -393,6 +575,7 @@ class QuizHandler(BaseHTTPRequestHandler):
         self._send_json({"ok": False, "error": "Not found"}, status=HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:  # noqa: N802
+        _ensure_cache_worker()
         parsed = urlparse(self.path)
         if parsed.path not in {"/api/generate", "/api/generate-start"}:
             self._send_json({"ok": False, "error": "Not found"}, status=HTTPStatus.NOT_FOUND)
@@ -427,19 +610,18 @@ class QuizHandler(BaseHTTPRequestHandler):
             JOBS[job_id] = {
                 "status": "pending",
                 "started_at": time.time(),
-                "questions": [],
-                "total": QUIZ_SIZE,
-                "source": "ollama + vector-rag",
-                "model": "pending",
             }
-        threading.Thread(target=_generate_quiz_batch, args=(job_id,), daemon=True).start()
+        _try_fulfill_job(job_id)
+        with JOBS_LOCK:
+            job = JOBS[job_id]
+        cache_ready = len(_cache_snapshot())
         self._send_json(
             {
                 "ok": True,
                 "job_id": job_id,
-                "status": "pending",
-                "completed": 0,
-                "total": QUIZ_SIZE,
+                "status": job["status"],
+                "cache_ready": cache_ready,
+                "required": QUIZ_SIZE,
                 "elapsed_seconds": 0,
             }
         )
@@ -448,35 +630,9 @@ class QuizHandler(BaseHTTPRequestHandler):
         return
 
 
-def _generate_quiz_batch(job_id: str) -> None:
-    def on_progress(questions: list[dict]) -> None:
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if not job or job.get("status") == "error":
-                return
-            job["questions"] = list(questions)
-
-    try:
-        payload = generate_quiz_batch_payload(QUIZ_SIZE, progress_callback=on_progress)
-    except Exception as exc:  # pragma: no cover
-        with JOBS_LOCK:
-            job = JOBS.get(job_id)
-            if job:
-                job["status"] = "error"
-                job["error"] = f"Quiz generation failed: {exc}"
-        return
-
-    with JOBS_LOCK:
-        job = JOBS.get(job_id)
-        if not job:
-            return
-        job["questions"] = list(payload.get("questions", []))
-        job["source"] = payload.get("source", "ollama + vector-rag")
-        job["model"] = payload.get("model", "unknown")
-        job["status"] = "ready"
-
-
 def main() -> None:
+    _load_cache()
+    _ensure_cache_worker()
     host = "127.0.0.1"
     port = 8000
     httpd = ThreadingHTTPServer((host, port), QuizHandler)

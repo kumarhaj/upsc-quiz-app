@@ -10,6 +10,7 @@ env/
 # Local RAG/download artifacts
 rag_store/
 rag_store_current/
+generated_questions_cache.json
 
 # Logs and temp files
 *.log
