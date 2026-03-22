@@ -30,22 +30,15 @@ The request to "download all 50 years UPSC General Studies Questions" cannot be 
 - NCERT textbooks portal: https://www.ncert.nic.in/textbook.php
 - NCERT textbooks landing page: https://www.ncert.nic.in/textbooks.php?ln=en
 
-## Standard GS book backbone used
+## Grounding used in the app
 
-These are recurring "standard books" across public UPSC-prep booklists and common prep practice. I used them only as a **topic framework**, not as downloadable full text.
+The app now relies on:
 
-- NCERT Class 6-12 History, Geography, Economics, Polity, Science
-- M. Laxmikanth, *Indian Polity*
-- Spectrum / Rajiv Ahir, *A Brief History of Modern India*
-- Nitin Singhania, *Indian Art and Culture*
-- G.C. Leong, *Certificate Physical and Human Geography*
-- Shankar IAS, *Environment*
+- NCERT-based RAG for static GS subjects
+- Official/public current-affairs sources for current-affairs RAG
+- UPSC previous-paper patterning for question style
 
-Public reference pages used to identify common book choices:
-
-- ClearIAS GS books page: https://www.clearias.com/ias-books-for-general-studies-civil-services-prelims-exam/
-- ClearIAS standard UPSC books page: https://www.clearias.com/ias-books/
-- Vajirao GS booklist page: https://vajiraoias.com/upsc/books/general-studies-booklist-for-upsc-prelims-mains/
+It does **not** rely on commercial standard-book names at runtime.
 
 ## Last 10 years current-affairs topic map
 
