@@ -1,2 +1,2 @@
-A local UPSC General Studies quiz app that generates fresh questions using Ollama (llama 3.1) and grounds them with a RAG pipeline.
-The app combines NCERT-based retrieval for static GS topics and official public-source retrieval for current affairs, then turns that context into quiz questions with answers, explanations, references, and score tracking. Uses more reliable two-corpus RAG setup for better grounding and relevance.
+A local General Studies quiz app that generates fresh questions using Ollama (llama 3.1) and grounds them with a RAG pipeline.
+The app combines NCERT-based retrieval for static GS topics and official public-source retrieval for current affairs, then turns that context into quiz questions with answers, explanations, references, and score tracking. Uses a two-corpus RAG setup for better grounding and relevance.

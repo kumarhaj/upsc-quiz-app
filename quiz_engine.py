@@ -94,13 +94,13 @@ def _embed_query(text: str) -> list[float]:
 
 def _build_rag_query(subject: str) -> str:
     query_map = {
-        "History": "NCERT history modern india culture themes in history UPSC prelims",
-        "Polity": "NCERT political science constitution parliament rights federalism UPSC prelims",
-        "Economy": "NCERT indian economic development reforms planning inflation UPSC prelims",
-        "Geography": "NCERT geography india physical environment rivers climate monsoon UPSC prelims",
-        "Environment": "NCERT geography environment biodiversity conservation climate UPSC prelims",
-        "Science": "NCERT science space technology basic science UPSC prelims",
-        "Current Affairs": "India recent policy missions laws summits space climate digital governance official updates UPSC prelims",
+        "History": "NCERT history modern india culture themes in history general studies prelims",
+        "Polity": "NCERT political science constitution parliament rights federalism general studies prelims",
+        "Economy": "NCERT indian economic development reforms planning inflation general studies prelims",
+        "Geography": "NCERT geography india physical environment rivers climate monsoon general studies prelims",
+        "Environment": "NCERT geography environment biodiversity conservation climate general studies prelims",
+        "Science": "NCERT science space technology basic science general studies prelims",
+        "Current Affairs": "India recent policy missions laws summits space climate digital governance official updates general studies prelims",
     }
     return query_map[subject]
 
@@ -111,7 +111,7 @@ def _prefer_official_current_affairs_chunks(chunks: list[dict[str, Any]]) -> lis
         path = chunk.get("path")
         title = str(chunk.get("title") or "").lower()
         is_local_note = bool(path) or "research notes" in title
-        is_official = any(domain in url for domain in ("pib.gov.in", "isro.gov.in", "g20.org", "upsc.gov.in"))
+        is_official = any(domain in url for domain in ("pib.gov.in", "isro.gov.in", "g20.org"))
         priority = 0 if is_official else 1 if not is_local_note else 2
         return (priority, -float(chunk.get("score") or 0.0))
 
@@ -215,7 +215,7 @@ def _build_subject_plan(count: int) -> list[str]:
 
 def _build_explanation_from_context(subject: str, primary_source: str | None, primary_text: str | None) -> str:
     if not primary_text:
-        return f"Grounded in {subject} context prepared for UPSC-style practice."
+        return f"Grounded in {subject} context prepared for general-studies practice."
     sentence = re.split(r"(?<=[.!?])\s+", primary_text.strip())[0]
     sentence = re.sub(r"\s+", " ", sentence).strip()
     if len(sentence) > 240:
@@ -279,9 +279,9 @@ def _validate_question(item: dict[str, Any]) -> dict[str, Any]:
 
 def _call_ollama_raw_question(subject: str) -> str:
     rag_context, primary_source, primary_text = _extract_rag_context(subject)
-    subject_context = rag_context or f"Use concise, factual UPSC-style grounding for {subject}."
+    subject_context = rag_context or f"Use concise, factual general-studies grounding for {subject}."
     prompt = f"""
-Create exactly one UPSC-style multiple choice question for UPSC General Studies.
+Create exactly one multiple choice question for General Studies practice.
 
 Requirements:
 - The subject must be exactly "{subject}".
@@ -291,7 +291,7 @@ CORRECT: ...
 WRONG1: ...
 WRONG2: ...
 WRONG3: ...
-- Keep it objective, UPSC-like, and factually grounded.
+- Keep it objective, exam-style, and factually grounded.
 - Prefer statement-style or elimination-friendly framing when natural.
 - Keep all 4 options short and distinct.
 - Use the retrieved context below as the main factual grounding when available.

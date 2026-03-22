@@ -71,7 +71,7 @@ def fetch_url(url: str) -> str:
             req = Request(
                 url,
                 headers={
-                    "User-Agent": "Mozilla/5.0 (compatible; UPSC-RAG-Builder/1.0)",
+                    "User-Agent": "Mozilla/5.0 (compatible; GS-RAG-Builder/1.0)",
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 },
             )
@@ -90,7 +90,7 @@ def fetch_bytes(url: str) -> bytes:
             req = Request(
                 url,
                 headers={
-                    "User-Agent": "Mozilla/5.0 (compatible; UPSC-RAG-Builder/1.0)",
+                    "User-Agent": "Mozilla/5.0 (compatible; GS-RAG-Builder/1.0)",
                     "Accept": "application/pdf,*/*;q=0.8",
                 },
             )

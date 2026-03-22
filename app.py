@@ -30,13 +30,13 @@ INDEX_HTML = """<!DOCTYPE html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UPSC GS Quiz Generator</title>
+    <title>General Studies Quiz Generator</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="shell">
       <section class="hero">
-        <p class="eyebrow">UPSC General Studies</p>
+        <p class="eyebrow">General Studies</p>
         <h1>Fresh 5-question quiz session</h1>
         <p class="subhead">
           Questions are pre-generated in the background and saved into a local cache. When 5 are
@@ -58,7 +58,7 @@ INDEX_HTML = """<!DOCTYPE html>
       <section class="card" id="introCard">
         <h2>How this works</h2>
         <p>
-          Click once to start a 5-question UPSC GS quiz. If the local cache already has enough
+          Click once to start a 5-question General Studies quiz. If the local cache already has enough
           questions, the quiz starts quickly. If not, the page shows cache progress and a timer
           while background generation continues.
         </p>
@@ -503,7 +503,7 @@ def _try_fulfill_job(job_id: str) -> None:
 
 
 class QuizHandler(BaseHTTPRequestHandler):
-    server_version = "UPSCQuiz/1.0"
+    server_version = "GSQuiz/1.0"
 
     def _send_json(self, payload: dict, status: int = HTTPStatus.OK) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -636,7 +636,7 @@ def main() -> None:
     host = "127.0.0.1"
     port = 8000
     httpd = ThreadingHTTPServer((host, port), QuizHandler)
-    print(f"UPSC quiz app running at http://{host}:{port}")
+    print(f"General Studies quiz app running at http://{host}:{port}")
     httpd.serve_forever()
 
 
