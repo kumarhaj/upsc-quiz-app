@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from quiz_engine import generate_quiz_payload
+from quiz_engine import generate_quiz_batch_payload, generate_quiz_payload
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -449,36 +449,23 @@ class QuizHandler(BaseHTTPRequestHandler):
 
 
 def _generate_quiz_batch(job_id: str) -> None:
-    questions: list[dict] = []
-    source = "ollama + vector-rag"
-    model = "unknown"
-
-    for _ in range(QUIZ_SIZE):
-        try:
-            payload = generate_quiz_payload()
-        except Exception as exc:  # pragma: no cover
-            with JOBS_LOCK:
-                job = JOBS.get(job_id)
-                if job:
-                    job["status"] = "error"
-                    job["error"] = f"Quiz generation failed: {exc}"
-            return
-
-        questions.append(payload["question"])
-        source = payload.get("source", source)
-        model = payload.get("model", model)
+    try:
+        payload = generate_quiz_batch_payload(QUIZ_SIZE)
+    except Exception as exc:  # pragma: no cover
         with JOBS_LOCK:
             job = JOBS.get(job_id)
-            if not job:
-                return
-            job["questions"] = list(questions)
-            job["source"] = source
-            job["model"] = model
+            if job:
+                job["status"] = "error"
+                job["error"] = f"Quiz generation failed: {exc}"
+        return
 
     with JOBS_LOCK:
         job = JOBS.get(job_id)
         if not job:
             return
+        job["questions"] = list(payload.get("questions", []))
+        job["source"] = payload.get("source", "ollama + vector-rag")
+        job["model"] = payload.get("model", "unknown")
         job["status"] = "ready"
 
 

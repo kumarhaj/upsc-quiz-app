@@ -35,6 +35,7 @@ SUBJECT_KEYWORDS = {
     "Science": ["science", "science-tech", "chandrayaan", "aditya-l1", "indiaai", "semiconductors", "technology", "space"],
     "Current Affairs": ["current", "g20", "dpdp", "indiaai", "green hydrogen", "women's reservation", "criminal laws", "biofuel", "article 370"],
 }
+MAX_BATCH_ATTEMPTS_MULTIPLIER = 5
 
 def _extract_json_block(text: str) -> str:
     start = text.find("{")
@@ -186,6 +187,70 @@ def _extract_labeled_field(text: str, label: str) -> str:
     return match.group(1).strip()
 
 
+def _normalize_for_similarity(text: str) -> str:
+    lowered = text.lower()
+    lowered = re.sub(r"[^a-z0-9\s]", " ", lowered)
+    lowered = re.sub(r"\s+", " ", lowered).strip()
+    return lowered
+
+
+def _question_signature(question: dict[str, Any]) -> tuple[str, str]:
+    stem = _normalize_for_similarity(question["question"])
+    reference = _normalize_for_similarity(question.get("reference", ""))
+    return stem, reference
+
+
+def _is_similar_question(candidate: dict[str, Any], accepted: list[dict[str, Any]]) -> bool:
+    candidate_stem, candidate_reference = _question_signature(candidate)
+    candidate_tokens = set(candidate_stem.split())
+
+    for existing in accepted:
+        existing_stem, existing_reference = _question_signature(existing)
+        if candidate_stem == existing_stem:
+            return True
+        if candidate_reference and candidate_reference == existing_reference:
+            return True
+        existing_tokens = set(existing_stem.split())
+        if not candidate_tokens or not existing_tokens:
+            continue
+        overlap = len(candidate_tokens & existing_tokens)
+        union = len(candidate_tokens | existing_tokens)
+        if union and (overlap / union) >= 0.72:
+            return True
+    return False
+
+
+def _build_subject_plan(count: int) -> list[str]:
+    ordered_subjects = [
+        "History",
+        "Polity",
+        "Economy",
+        "Geography",
+        "Environment",
+        "Science",
+        "Current Affairs",
+    ]
+    plan = list(ordered_subjects[: min(count, len(ordered_subjects))])
+    remaining = count - len(plan)
+    if remaining <= 0:
+        random.shuffle(plan)
+        return plan
+
+    weighted_tail = [
+        "Polity",
+        "Economy",
+        "Geography",
+        "Current Affairs",
+        "History",
+        "Environment",
+        "Science",
+    ]
+    for index in range(remaining):
+        plan.append(weighted_tail[index % len(weighted_tail)])
+    random.shuffle(plan)
+    return plan
+
+
 def _build_explanation_from_context(subject: str, primary_source: str | None, primary_text: str | None) -> str:
     if not primary_text:
         return f"Grounded in {subject} context prepared for UPSC-style practice."
@@ -296,9 +361,9 @@ Use this subject-specific grounding context:
     return data.get("response", "").strip(), primary_source, primary_text
 
 
-def _call_ollama_question() -> dict[str, Any]:
+def _call_ollama_question(subject: str | None = None) -> dict[str, Any]:
     last_error: Exception | None = None
-    subject = random.choice(SUBJECTS)
+    subject = subject or random.choice(SUBJECTS)
     for _attempt in range(QUESTION_RETRY_LIMIT):
         try:
             raw_text, primary_source, primary_text = _call_ollama_raw_question(subject)
@@ -326,4 +391,37 @@ def generate_quiz_payload(force_fallback: bool = False) -> dict[str, Any]:
         "model": OLLAMA_MODEL,
         "count": 1,
         "question": question,
+    }
+
+
+def generate_quiz_batch_payload(count: int, force_fallback: bool = False) -> dict[str, Any]:
+    if force_fallback:
+        raise ValueError("Fallback mode is disabled. Ollama generation is required.")
+
+    accepted: list[dict[str, Any]] = []
+    subject_plan = _build_subject_plan(count)
+    max_attempts = max(count * MAX_BATCH_ATTEMPTS_MULTIPLIER, count + 3)
+    attempts = 0
+
+    while len(accepted) < count and attempts < max_attempts:
+        subject = subject_plan[len(accepted)] if len(accepted) < len(subject_plan) else random.choice(SUBJECTS)
+        attempts += 1
+        try:
+            question = _call_ollama_question(subject)
+        except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+            continue
+        if _is_similar_question(question, accepted):
+            continue
+        accepted.append(question)
+
+    if len(accepted) != count:
+        raise RuntimeError(
+            f"Unable to generate a sufficiently diverse {count}-question quiz with Ollama {OLLAMA_MODEL}."
+        )
+
+    return {
+        "source": "ollama + vector-rag",
+        "model": OLLAMA_MODEL,
+        "count": count,
+        "questions": accepted,
     }
